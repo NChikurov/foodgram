@@ -13,7 +13,8 @@ class User(AbstractUser):
         'Аватар',
         upload_to='users/avatars',
         blank=True,
-        null=True
+        null=True,
+        help_text='Загрузите фото профиля'
     )
 
     class Meta:

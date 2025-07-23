@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
-class CustomCreationForm(UserCreationForm):
+class CustomUserCreationForm(UserCreationForm):
     """
     Класс для переопределения модели, с которой работает форма.
     """
@@ -25,7 +25,7 @@ class CustomCreationForm(UserCreationForm):
         self.fields['username'].required = True
         self.fields['email'].required = True
 
-class CustomChangeForm(UserChangeForm):
+class CustomUserChangeForm(UserChangeForm):
     """
     Форма для изменения пользователей в админке.
     """
