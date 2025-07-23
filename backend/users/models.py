@@ -8,7 +8,13 @@ class User(AbstractUser):
     """
     first_name = models.CharField('Имя', max_length=30)
     last_name = models.CharField('Фамилия', max_length=30)
-    email = models.CharField('Почта', max_length=30)
+    email = models.CharField('Почта', max_length=100, unique=True)
+    avatar = models.ImageField(
+        'Аватар',
+        upload_to='users/avatars',
+        blank=True,
+        null=True
+    )
 
     class Meta:
         ordering = ('id',)
