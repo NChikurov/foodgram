@@ -21,11 +21,11 @@ class UserViewSet(viewsets.ModelViewSet):
     Вьюсет для работы с пользователями.
 
     Автоматически создает эндпоинты:
-    - GET /api/v1/users/ - список пользователей;
-    - POST /api/v1/users/ - регистрация;
-    - GET /api/v1/users/{id}/ - профиль пользователя;
-    - PUT/PATCH /api/v1/users/{id}/ - обновление пользователя;
-    - DELETE /api/v1/users/{id}/ - удаление профиля.
+    - GET /api/users/ - список пользователей;
+    - POST /api/users/ - регистрация;
+    - GET /api/users/{id}/ - профиль пользователя;
+    - PUT/PATCH /api/users/{id}/ - обновление пользователя;
+    - DELETE /api/users/{id}/ - удаление профиля.
     """
     queryset = User.objects.all()
     permission_classes = [IsAuthenticatedOrCreateReadOnly, IsOwnerOrReadOnly]
@@ -49,8 +49,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def me(self, request):
         """
         Работа с текущим пользователем:
-        - GET /api/v1/users/me/ - мой профиль;
-        - PUT/PATCH /api/v1/users/me - обновить профиль.
+        - GET /api/users/me/ - мой профиль;
+        - PUT/PATCH /api/users/me - обновить профиль.
         """
         user = request.user
 
@@ -80,8 +80,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def avatar(self, request):
         """
         Работа с аватаром:
-        - PUT /api/v1/users/me/avatar/ - загрузить аватар;
-        - DELETE /api/v1/users/me/avatar/ - удалить аватар.
+        - PUT /api/users/me/avatar/ - загрузить аватар;
+        - DELETE /api/users/me/avatar/ - удалить аватар.
         """
         user = request.user
 

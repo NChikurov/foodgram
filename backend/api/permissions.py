@@ -29,7 +29,7 @@ class IsAuthenticatedOrCreateReadOnly(permissions.BasePermission):
     - остальные действия только авторизованным пользователям.
     """
     def has_permission(self, request, view):
-        if reqest.method in ['GET', 'POST']:
+        if request.method in ['GET', 'POST']:
             return True
 
         return request.user and request.user.is_authenticated

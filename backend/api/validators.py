@@ -12,15 +12,18 @@ def validate_unique_email(value):
         raise serializers.ValidationError(
             'Пользователь с таким email уже существует.'
         )
+    
     return value
 
 
 def validate_unique_username(value):
     """Проверяет уникальность никнейма."""
     if User.objects.filter(username=value).exists():
-        raise serializers.ValdationError(
+        raise serializers.ValidationError(
             'Пользователь с таким никнеймом уже существует.'
         )
+    
+    return value
 
 
 def validate_password_strength(value):
@@ -39,7 +42,8 @@ def validate_password_strength(value):
         raise serializers.ValidationError(
             'Пароль должен содержать хотя бы одну заглавную букву.'
         )
-
+    
+    return value
 
 def validate_name_format(value):
     """Проверяет формат имени и фамилии."""
