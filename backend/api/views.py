@@ -1,4 +1,6 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -103,5 +105,51 @@ class UserViewSet(viewsets.ModelViewSet):
         if user.avatar:
             user.avatar.delete()
             user.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(
+        detail=False,
+        methods=['post'],
+        permission_classes=[IsAuthenticated],
+        url_path='set_password'
+    )
+    def set_password(self, request):
+        """
+        Смена пароля для текущего пользователя: 
+        - POST /api/users/set_password/
+        """
+        user = request.user
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if not current_password:
+            return Response(
+                {'current_password': ['Обязательное поле']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not new_password:
+            return Response(
+                {'new_password': ['Обязательное поле']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not user.check_password(current_password):
+            return Response(
+                {'current_password': ['Неверный пароль']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            validate_password(new_password, user)
+        except ValidationError as e:
+            return Response(
+                {'new_password': e.messages},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user.set_password(new_password)
+        user.save()
 
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -18,6 +18,8 @@ class UserSerializer(serializers.ModelSerializer):
     Сериализатор для отображения пользователей.
     Используется для GET-запросов.
     """
+    is_subscribed = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
@@ -26,9 +28,21 @@ class UserSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'email',
+            'is_subscribed',
             'avatar'
         )
         read_only_fields = ('id',)
+    
+    def get_is_subscribed(self, obj):
+        """
+        Проверяем, подписан ли текущий пользователь на другого.
+        """
+        request = self.context.get('request')
+
+        if request and request.user.is_authenticated:
+            return False
+        
+        return False
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -56,6 +70,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
+            'id',
             'username',
             'first_name',
             'last_name',
