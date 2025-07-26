@@ -10,6 +10,8 @@ class User(AbstractUser):
     username = models.CharField(
         'Никнейм',
         max_length=150,
+        blank=True,
+        null=True,
         unique=True,
         validators=[UnicodeUsernameValidator()],
     )
