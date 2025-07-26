@@ -1,9 +1,11 @@
 from rest_framework import serializers
 
 from django.contrib.auth import get_user_model
+from django.core.validators import EmailValidator
 
 from .validators import (
     validate_unique_email,
+    validate_unique_email_update,
     validate_unique_username,
     validate_password_strength,
     validate_name_format
@@ -57,7 +59,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     username = serializers.CharField(
         validators=[validate_unique_username]
     )
-    email = serializers.CharField(
+    email = serializers.EmailField(
         validators = [validate_unique_email]
     )
     first_name = serializers.CharField(
@@ -97,14 +99,21 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(
         validators = [validate_name_format]
     )
+    email = serializers.EmailField(required=False)
 
     class Meta:
         model = User
         fields = (
+            'email',
             'first_name',
             'last_name',
             'avatar'
         )
+    
+    def validate_email(self, value):
+        if value:
+            return validate_unique_email_update(value, self.instance)
+        return value
 
     def update(self, instance, validated_data):
         """Обновляем только разрешенные поля."""

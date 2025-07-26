@@ -12,7 +12,16 @@ def validate_unique_email(value):
         raise serializers.ValidationError(
             'Пользователь с таким email уже существует.'
         )
-    
+
+    return value
+
+
+def validate_unique_email_update(value, instance):
+    """Проверяет уникальность email при обновлении."""
+    if User.objects.filter(email=value).exclude(pk=instance.pk).exists():
+        raise serializers.ValidationError(
+            'Пользователь с таким email уже существует.'
+        )
     return value
 
 
@@ -23,6 +32,15 @@ def validate_unique_username(value):
             'Пользователь с таким никнеймом уже существует.'
         )
     
+    return value
+
+
+def validate_unique_username_update(value, instance):
+    """Проверяет уникальность username при обновлении."""
+    if User.objects.filter(username=value).exclude(pk=instance.pk).exists():
+        raise serializers.ValidationError(
+            'Пользователь с таким никнеймом уже существует.'
+        )
     return value
 
 

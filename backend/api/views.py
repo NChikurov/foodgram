@@ -57,7 +57,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user = request.user
 
         if request.method == 'GET':
-            serializer = UserSerializer(user)
+            serializer = UserSerializer(user, context={'request': request})
             return Response(serializer.data)
         
         serializer = UserUpdateSerializer(
@@ -68,7 +68,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         if serializer.is_valid():
             serializer.save()
-            response_serializer = UserSerializer(user)
+            response_serializer = UserSerializer(user, context={'request': request})
             return Response(response_serializer.data)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -103,7 +103,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
         if user.avatar:
-            user.avatar.delete()
+            user.avatar.delete(save=False)
+            user.avatar = None
             user.save()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
