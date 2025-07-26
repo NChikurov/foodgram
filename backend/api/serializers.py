@@ -8,7 +8,8 @@ from .validators import (
     validate_unique_email_update,
     validate_unique_username,
     validate_password_strength,
-    validate_name_format
+    validate_name_format,
+    validate_username_format
 )
 
 
@@ -57,7 +58,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         validators=[validate_password_strength]
     )
     username = serializers.CharField(
-        validators=[validate_unique_username]
+        validators=[validate_unique_username, validate_username_format]
     )
     email = serializers.EmailField(
         validators = [validate_unique_email]

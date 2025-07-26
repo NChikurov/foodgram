@@ -3,7 +3,10 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
@@ -102,13 +105,18 @@ class UserViewSet(viewsets.ModelViewSet):
             })
 
 
-        if user.avatar:
-            user.avatar.delete(save=False)
+        if request.method == 'DELETE':
+            if user.avatar:
+                try:
+                    user.avatar.delete(save=False)
+                except Exception:
+                    pass
+
             user.avatar = None
             user.save()
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(
         detail=False,
         methods=['post'],
@@ -153,4 +161,35 @@ class UserViewSet(viewsets.ModelViewSet):
         user.set_password(new_password)
         user.save()
 
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CustomAuthToken(ObtainAuthToken):
+    """
+    Идентификация и аутентификация пользователя.
+    """
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        if email and password:
+            try:
+                user = User.objects.get(email=email)
+                user = authenticate(username=user.username, password=password)
+                if user:
+                    token, created = Token.objects.get_or_create(user=user)
+                    return Response({'auth_token': token.key})
+            except User.DoesNotExist:
+                pass
+
+        return Response({'non_field_errors': ['Unable to log in with provided credentials.']}, 
+                       status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    try:
+        request.user.auth_token.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    except Token.DoesNotExist:
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1,3 +1,5 @@
+import re
+
 from rest_framework import serializers
 
 from django.contrib.auth import get_user_model
@@ -30,6 +32,20 @@ def validate_unique_username(value):
     if User.objects.filter(username=value).exists():
         raise serializers.ValidationError(
             'Пользователь с таким никнеймом уже существует.'
+        )
+    
+    return value
+
+def validate_username_format(value):
+    """Проверяет формат username согласно Django стандартам."""
+    if len(value) > 150:
+        raise serializers.ValidationError(
+            'Username не может быть длиннее 150 символов.'
+        )
+    
+    if not re.match(r'^[\w.@+-]+$', value):
+        raise serializers.ValidationError(
+            'Username может содержать только буквы, цифры и символы @/./+/-/_'
         )
     
     return value
