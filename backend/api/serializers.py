@@ -1,8 +1,13 @@
 from rest_framework import serializers
 
 from django.contrib.auth import get_user_model
-from django.core.validators import EmailValidator
 
+from recipes.models import (
+    Tag,
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+)
 from .validators import (
     validate_unique_email,
     validate_unique_email_update,
@@ -35,7 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
             'avatar'
         )
         read_only_fields = ('id',)
-    
+
     def get_is_subscribed(self, obj):
         """
         Проверяем, подписан ли текущий пользователь на другого.
@@ -44,7 +49,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         if request and request.user.is_authenticated:
             return False
-        
+
         return False
 
 
@@ -61,13 +66,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
         validators=[validate_unique_username, validate_username_format]
     )
     email = serializers.EmailField(
-        validators = [validate_unique_email]
+        validators=[validate_unique_email]
     )
     first_name = serializers.CharField(
-        validators = [validate_name_format]
+        validators=[validate_name_format]
     )
     last_name = serializers.CharField(
-        validators = [validate_name_format]
+        validators=[validate_name_format]
     )
 
     class Meta:
@@ -80,7 +85,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'email',
             'password'
         )
-    
+
     def create(self, validated_data):
         password = validated_data.pop('password')
         user = User.objects.create_user(**validated_data)
@@ -95,10 +100,10 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     Используется для PUT/PATCH запросов.
     """
     first_name = serializers.CharField(
-        validators = [validate_name_format]
+        validators=[validate_name_format]
     )
     last_name = serializers.CharField(
-        validators = [validate_name_format]
+        validators=[validate_name_format]
     )
     email = serializers.EmailField(required=False)
 
@@ -110,7 +115,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'last_name',
             'avatar'
         )
-    
+
     def validate_email(self, value):
         if value:
             return validate_unique_email_update(value, self.instance)
@@ -118,8 +123,97 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """Обновляем только разрешенные поля."""
-        instance.first_name = validated_data.get('first_name', instance.first_name)
-        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.first_name = validated_data.get(
+            'first_name', instance.first_name)
+        instance.last_name = validated_data.get(
+            'last_name', instance.last_name)
         instance.avatar = validated_data.get('avatar', instance.avatar)
         instance.save()
         return instance
+
+
+class TagSerializer(serializers.ModelSerializer):
+    """Сериализатор для тегов."""
+
+    class Meta:
+        model = Tag
+        fields = ('id', 'name', 'slug')
+        read_only_fields = ('id',)
+
+
+class IngredientSerializer(serializers.ModelSerializer):
+    """Сериализатор для ингредиентов."""
+
+    class Meta:
+        model = Ingredient
+        fields = ('id', 'name', 'measurement_unit')
+        read_only_fields = ('id',)
+
+
+class RecipeIngredientSerializer(serializers.ModelSerializer):
+    """Сериализатор для ингредиентов в рецепте."""
+    id = serializers.ReadOnlyField(source='ingredient.id')
+    name = serializers.ReadOnlyField(source='ingredient.name')
+    measurement_unit = serializers.ReadOnlyField(
+        source='ingredient.measurement_unit'
+    )
+
+    class Meta:
+        model = RecipeIngredient
+        fields = ('id', 'name', 'measurement_unit', 'amount')
+
+
+class RecipeSerializer(serializers.ModelSerializer):
+    """Сериализатор для рецептов."""
+    tags = TagSerializer(many=True, read_only=True)
+    author = UserSerializer(read_only=True)
+    ingredients = RecipeIngredientSerializer(
+        source='recipeingredient_set',
+        many=True,
+        read_only=True
+    )
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Recipe
+        fields = (
+            'id',
+            'tags',
+            'author',
+            'ingredients',
+            'is_favorited',
+            'is_in_shopping_cart',
+            'name',
+            'image',
+            'text',
+            'cooking_time',
+        )
+        read_only_fields = ('id', 'author')
+
+    def get_is_favorited(self, obj):
+        """Проверяет, добавлен ли рецепт в избранное."""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+
+        from recipes.models import Favorite
+
+        return Favorite.objects.filter(
+            user=request.user,
+            recipe=obj
+        ).exists()
+
+    def get_is_in_shopping_cart(self, obj):
+        """Проверяет, добавлен ли рецепт в корзину."""
+        request = self.context.get('request')
+
+        if not request or not request.user.is_authenticated:
+            return False
+
+        from recipes.models import ShoppingCart
+
+        return ShoppingCart.objects.filter(
+            user=request.user,
+            recipe=obj
+        ).exists()

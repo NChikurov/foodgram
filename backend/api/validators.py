@@ -33,8 +33,9 @@ def validate_unique_username(value):
         raise serializers.ValidationError(
             'Пользователь с таким никнеймом уже существует.'
         )
-    
+
     return value
+
 
 def validate_username_format(value):
     """Проверяет формат username согласно Django стандартам."""
@@ -42,12 +43,12 @@ def validate_username_format(value):
         raise serializers.ValidationError(
             'Username не может быть длиннее 150 символов.'
         )
-    
+
     if not re.match(r'^[\w.@+-]+$', value):
         raise serializers.ValidationError(
             'Username может содержать только буквы, цифры и символы @/./+/-/_'
         )
-    
+
     return value
 
 
@@ -76,8 +77,9 @@ def validate_password_strength(value):
         raise serializers.ValidationError(
             'Пароль должен содержать хотя бы одну заглавную букву.'
         )
-    
+
     return value
+
 
 def validate_name_format(value):
     """Проверяет формат имени и фамилии."""
@@ -90,10 +92,10 @@ def validate_name_format(value):
         raise serializers.ValidationError(
             'Имя (фамилия) должно содержать минимум 2 символа.'
         )
-    
+
     if not value.replace(' ', '').replace('-', '').isalpha():
         raise serializers.ValidationError(
             'Имя может содержать только буквы, пробелы и дефис.'
         )
-    
+
     return value.strip().title()

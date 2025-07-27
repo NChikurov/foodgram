@@ -33,5 +33,5 @@ class IsAuthenticatedOrCreateReadOnly(permissions.BasePermission):
             return True
         elif request.method == 'POST' and view.action == 'create':
             return True
-        
+
         return request.user and request.user.is_authenticated
