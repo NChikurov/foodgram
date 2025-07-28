@@ -27,8 +27,6 @@ class UserSerializer(serializers.ModelSerializer):
     Используется для GET-запросов.
     """
     is_subscribed = serializers.SerializerMethodField()
-    recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -40,8 +38,6 @@ class UserSerializer(serializers.ModelSerializer):
             'email',
             'is_subscribed',
             'avatar',
-            'recipes',
-            'recipes_count'
         )
         read_only_fields = ('id',)
 
@@ -55,6 +51,15 @@ class UserSerializer(serializers.ModelSerializer):
             return False
 
         return False
+
+
+class UserWithRecipesSerializer(UserSerializer):
+    """Сериализатор для вывода рецептов пользователя."""
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
+
+    class Meta:
+        fields = UserSerializer.Meta.fields + ('recipes', 'recipes_count')
 
     def get_recipes(self, obj):
         """Возвращает рецепты автора."""
