@@ -20,7 +20,14 @@ from .serializers import (
     RecipeSerializer
 )
 from .permissions import IsOwnerOrReadOnly, IsAuthenticatedOrCreateReadOnly
-from recipes.models import Tag, Ingredient, Recipe, Favorite, ShoppingCart
+from recipes.models import (
+    Tag,
+    Ingredient,
+    Recipe,
+    Favorite,
+    ShoppingCart,
+    Subscription
+)
 
 User = get_user_model()
 
@@ -168,6 +175,63 @@ class UserViewSet(viewsets.ModelViewSet):
         user.save()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=True,
+        methods=['post', 'delete'],
+        permission_classes=[IsAuthenticated],
+        url_path='subscribe'
+    )
+    def subscribe(self, request, pk=None):
+        """
+        Подписка на автора:
+        - POST /api/users/{id}/subscribe - подписаться;
+        - DELETE /api/users/{id}/subscribe - отписаться.
+        """
+        author = self.get_object()
+        user = request.user
+
+        if user == author:
+            return Response(
+                {'error': 'Нельзя подписать на себя'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if request.method == 'POST':
+            subscription, created = Subscription.objects.get_or_create(
+                user=user,
+                author=author
+            )
+
+            if not created:
+                return Response(
+                    {'error': 'Уже подписан.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            serializer = UserSerializer(author, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=False,
+        methods=['get'],
+        permission_classes=[IsAuthenticated],
+        url_path='subscriptions'
+    )
+    def subscriptions(self, request):
+        """
+        Список подписок пользователя:
+        - GET /api/users/subscriptions.
+        """
+        subscriptions = Subscription.objects.filter(user=request.user)
+        authors = User.objects.filter(id__in=subscriptions.values('author'))
+
+        page = self.paginate_queryset(authors)
+        if page is not None:
+            serializer = UserSerializer(
+                page, many=True, context={'request': request}
+            )
+            return Response(serializer.data)
 
 
 class CustomAuthToken(ObtainAuthToken):
