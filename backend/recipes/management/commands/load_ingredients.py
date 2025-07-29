@@ -16,15 +16,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         file_path = options['file']
-        
+
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 ingredients_data = json.load(file)
-            
+
             ingredients_to_create = []
-            
+
             for ingredient_data in ingredients_data:
-                # Проверяем, что ингредиент еще не существует
                 if not Ingredient.objects.filter(
                     name=ingredient_data['name']
                 ).exists():
@@ -34,8 +33,7 @@ class Command(BaseCommand):
                             measurement_unit=ingredient_data['measurement_unit']
                         )
                     )
-            
-            # Массовое создание для ускорения
+
             if ingredients_to_create:
                 Ingredient.objects.bulk_create(ingredients_to_create)
                 self.stdout.write(
@@ -47,7 +45,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.WARNING('Все ингредиенты уже существуют')
                 )
-                
+
         except FileNotFoundError:
             self.stdout.write(
                 self.style.ERROR(f'Файл {file_path} не найден')
