@@ -7,6 +7,7 @@ from recipes.models import (
     Ingredient,
     Recipe,
     RecipeIngredient,
+    Subscription
 )
 from .validators import (
     validate_unique_email,
@@ -47,10 +48,13 @@ class UserSerializer(serializers.ModelSerializer):
         """
         request = self.context.get('request')
 
-        if request and request.user.is_authenticated:
+        if not request or not request.user.is_authenticated:
             return False
 
-        return False
+        return Subscription.objects.filter(
+            user=request.user,
+            author=obj
+        ).exists()
 
 
 class UserWithRecipesSerializer(UserSerializer):
@@ -59,6 +63,7 @@ class UserWithRecipesSerializer(UserSerializer):
     recipes_count = serializers.SerializerMethodField()
 
     class Meta:
+        model = User
         fields = UserSerializer.Meta.fields + ('recipes', 'recipes_count')
 
     def get_recipes(self, obj):
@@ -198,6 +203,16 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'measurement_unit', 'amount')
 
 
+class RecipeIngredientCreateSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания ингредиентов в рецепте."""
+    id = serializers.IntegerField()
+    amount = serializers.IntegerField(min_value=1)
+
+    class Meta:
+        model = RecipeIngredient
+        fields = ('id', 'amount')
+
+
 class RecipeSerializer(serializers.ModelSerializer):
     """Сериализатор для рецептов."""
     tags = TagSerializer(many=True, read_only=True)
@@ -252,3 +267,131 @@ class RecipeSerializer(serializers.ModelSerializer):
             user=request.user,
             recipe=obj
         ).exists()
+
+
+class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания и обновления рецептов."""
+    ingredients = RecipeIngredientCreateSerializer(many=True)
+    tags = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(),
+        many=True
+    )
+    image = serializers.CharField()
+    cooking_time = serializers.IntegerField(min_value=1)
+
+    class Meta:
+        model = Recipe
+        fields = (
+            'ingredients',
+            'tags',
+            'image',
+            'name',
+            'text',
+            'cooking_time'
+        )
+
+    def validate_ingredients(self, value):
+        """Валидация ингредиентов."""
+        if not value:
+            raise serializers.ValidationError(
+                'Нужен хотя бы один ингредиент'
+            )
+
+        ingredient_ids = [item['id'] for item in value]
+        if len(ingredient_ids) != len(set(ingredient_ids)):
+            raise serializers.ValidationError(
+                'Ингредиенты не должны повторяться'
+            )
+
+        existing_ingredients = Ingredient.objects.filter(
+            id__in=ingredient_ids
+        )
+        if len(existing_ingredients) != len(ingredient_ids):
+            raise serializers.ValidationError(
+                'Указан несуществующий ингредиент'
+            )
+
+        return value
+
+    def validate_tags(self, value):
+        """Валидация тегов."""
+        if not value:
+            raise serializers.ValidationError(
+                'Нужен хотя бы один тег'
+            )
+
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError(
+                'Теги не должны повторяться'
+            )
+
+        return value
+
+    def validate_name(self, value):
+        """Валидация названия."""
+        if not value or not value.strip():
+            raise serializers.ValidationError(
+                'Название не может быть пустым'
+            )
+        return value.strip()
+
+    def validate_text(self, value):
+        """Валидация описания."""
+        if not value or not value.strip():
+            raise serializers.ValidationError(
+                'Описание не может быть пустым'
+            )
+        return value.strip()
+
+    def validate_image(self, value):
+        """Валидация изображения."""
+        if not value or not value.strip():
+            raise serializers.ValidationError(
+                'Изображение обязательно'
+            )
+        return value
+
+    def create_ingredients(self, recipe, ingredients_data):
+        """Создание ингредиентов для рецепта."""
+        RecipeIngredient.objects.bulk_create([
+            RecipeIngredient(
+                recipe=recipe,
+                ingredient_id=ingredient_data['id'],
+                amount=ingredient_data['amount']
+            )
+            for ingredient_data in ingredients_data
+        ])
+
+    def create(self, validated_data):
+        """Создание рецепта."""
+        ingredients_data = validated_data.pop('ingredients')
+        tags_data = validated_data.pop('tags')
+
+        recipe = Recipe.objects.create(**validated_data)
+        recipe.tags.set(tags_data)
+        self.create_ingredients(recipe, ingredients_data)
+
+        return recipe
+
+    def update(self, instance, validated_data):
+        """Обновление рецепта."""
+        ingredients_data = validated_data.pop('ingredients')
+        tags_data = validated_data.pop('tags')
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        instance.tags.set(tags_data)
+
+        instance.recipeingredient_set.all().delete()
+        self.create_ingredients(instance, ingredients_data)
+
+        return instance
+
+    def to_representation(self, instance):
+        """Возвращаем полное представление рецепта."""
+        return RecipeSerializer(
+            instance,
+            context=self.context
+        ).data

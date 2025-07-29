@@ -13,11 +13,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .serializers import (
     UserSerializer,
+    UserWithRecipesSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
     TagSerializer,
     IngredientSerializer,
-    RecipeSerializer
+    RecipeSerializer,
+    RecipeCreateUpdateSerializer
 )
 from .permissions import IsOwnerOrReadOnly, IsAuthenticatedOrCreateReadOnly
 from recipes.models import (
@@ -212,6 +214,18 @@ class UserViewSet(viewsets.ModelViewSet):
             serializer = UserSerializer(author, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+        elif request.method == 'DELETE':
+            try:
+                subscription = Subscription.objects.get(
+                    user=user, author=author)
+                subscription.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            except Subscription.DoesNotExist:
+                return Response(
+                    {'error': 'Подписка не найдена'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
     @action(
         detail=False,
         methods=['get'],
@@ -228,10 +242,14 @@ class UserViewSet(viewsets.ModelViewSet):
 
         page = self.paginate_queryset(authors)
         if page is not None:
-            serializer = UserSerializer(
+            serializer = UserWithRecipesSerializer(
                 page, many=True, context={'request': request}
             )
-            return Response(serializer.data)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = UserWithRecipesSerializer(
+            authors, many=True, context={'request': request})
+        return Response(serializer.data)
 
 
 class CustomAuthToken(ObtainAuthToken):
@@ -277,6 +295,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = [AllowAny]
+    pagination_class = None
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
@@ -284,6 +303,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = [AllowAny]
+    pagination_class = None
 
     def get_queryset(self):
         """Фильтрация ингредиентов по имени."""
@@ -299,8 +319,42 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 class RecipeViewSet(viewsets.ModelViewSet):
     """Вьюсет для рецептов."""
     queryset = Recipe.objects.all()
-    serializer_class = RecipeSerializer
     permission_classes = [IsAuthenticatedOrCreateReadOnly, IsOwnerOrReadOnly]
+
+    def get_serializer_class(self):
+        """Выбор сериализатора в зависимости от действия."""
+        if self.action in ['create', 'update', 'partial_update']:
+            return RecipeCreateUpdateSerializer
+        return RecipeSerializer
+
+    def get_queryset(self):
+        """Фильтрация рецептов."""
+        queryset = Recipe.objects.all()
+
+        author = self.request.query_params.get('author')
+        if author:
+            queryset = queryset.filter(author=author)
+
+        tags = self.request.query_params.getlist('tags')
+        if tags:
+            queryset = queryset.filter(tags__slug__in=tags).distinct()
+
+        is_favorited = self.request.query_params.get('is_favorited')
+        if is_favorited and self.request.user.is_authenticated:
+            if is_favorited == '1':
+                queryset = queryset.filter(
+                    favorite__user=self.request.user
+                )
+
+        is_in_shopping_cart = self.request.query_params.get(
+            'is_in_shopping_cart')
+        if is_in_shopping_cart and self.request.user.is_authenticated:
+            if is_in_shopping_cart == '1':
+                queryset = queryset.filter(
+                    shoppingcart__user=self.request.user
+                )
+
+        return queryset
 
     def perform_create(self, serializer):
         """Автоматически устанавливаем автора при создании."""
