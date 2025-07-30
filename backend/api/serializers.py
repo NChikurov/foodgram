@@ -1,6 +1,10 @@
-from rest_framework import serializers
+import base64
 
+import uuid
+
+from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
 
 from recipes.models import (
     Tag,
@@ -20,6 +24,38 @@ from .validators import (
 
 
 User = get_user_model()
+
+
+class Base64ImageField(serializers.ImageField):
+    """
+    Поле для обработки изображений в формате base64.
+    """
+    def to_internal_value(self, data):
+        if hasattr(data, 'read'):
+            return super().to_internal_value(data)
+
+        if isinstance(data, str):
+            if 'data:' in data and ';base64,' in data:
+                header, data = data.split(';base64,')
+
+                try:
+                    decoded_file = base64.b64decode(data)
+                except:
+                    raise serializers.ValidationError('Неверный формат base64')
+
+                file_extension = 'jpg'
+                if 'png' in header:
+                    file_extension = 'png'
+                elif 'gif' in header:
+                    file_extension = 'gif'
+
+                file_name = f"{uuid.uuid4()}.{file_extension}"
+
+                data = ContentFile(decoded_file, name=file_name)
+
+                return super().to_internal_value(data)
+
+        return super().to_internal_value(data)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -276,7 +312,7 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         queryset=Tag.objects.all(),
         many=True
     )
-    image = serializers.CharField()
+    image = Base64ImageField()
     cooking_time = serializers.IntegerField(min_value=1)
 
     class Meta:
@@ -345,7 +381,7 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_image(self, value):
         """Валидация изображения."""
-        if not value or not value.strip():
+        if not value:
             raise serializers.ValidationError(
                 'Изображение обязательно'
             )
@@ -362,6 +398,34 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
             for ingredient_data in ingredients_data
         ])
 
+    def validate_empty(self, data):
+        """
+        Общая валидация данных.
+        Требуем обязательные поля как при создании, так и при обновлении.
+        """
+        request = self.context.get('request')
+        if request and request.method in ['PUT', 'PATCH']:
+            if 'ingredients' not in data:
+                raise serializers.ValidationError({
+                    'ingredients': 'Это поле обязательно.'
+                })
+            if 'tags' not in data:
+                raise serializers.ValidationError({
+                    'tags': 'Это поле обязательно.'
+                })
+
+        if 'ingredients' in data and not data['ingredients']:
+            raise serializers.ValidationError({
+                'ingredients': 'Нужен хотя бы один ингредиент'
+            })
+
+        if 'tags' in data and not data['tags']:
+            raise serializers.ValidationError({
+                'tags': 'Нужен хотя бы один тег'
+            })
+
+        return data
+
     def create(self, validated_data):
         """Создание рецепта."""
         ingredients_data = validated_data.pop('ingredients')
@@ -375,17 +439,19 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """Обновление рецепта."""
-        ingredients_data = validated_data.pop('ingredients')
-        tags_data = validated_data.pop('tags')
+        ingredients_data = validated_data.pop('ingredients', None)
+        tags_data = validated_data.pop('tags', None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        instance.tags.set(tags_data)
+        if tags_data is not None:
+            instance.tags.set(tags_data)
 
-        instance.recipeingredient_set.all().delete()
-        self.create_ingredients(instance, ingredients_data)
+        if ingredients_data is not None:
+            instance.recipeingredient_set.all().delete()
+            self.create_ingredients(instance, ingredients_data)
 
         return instance
 

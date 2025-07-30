@@ -21,7 +21,11 @@ from .serializers import (
     RecipeSerializer,
     RecipeCreateUpdateSerializer
 )
-from .permissions import IsOwnerOrReadOnly, IsAuthenticatedOrCreateReadOnly
+from .permissions import (
+    IsOwnerOrReadOnly,
+    IsAuthenticatedOrCreateReadOnly,
+    IsRecipeAuthorOrReadOnly
+)
 from recipes.models import (
     Tag,
     Ingredient,
@@ -319,7 +323,19 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 class RecipeViewSet(viewsets.ModelViewSet):
     """Вьюсет для рецептов."""
     queryset = Recipe.objects.all()
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+
+    def get_permissions(self):
+        """
+        Объяснение: эта функция решает, кто может что делать
+        - Читать рецепты (GET) могут все, даже без авторизации  
+        - Создавать/изменять (POST, PUT, PATCH, DELETE) только авторизованные
+        """
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsRecipeAuthorOrReadOnly]
+
+        return [permission() for permission in permission_classes]
 
     def get_serializer_class(self):
         """Выбор сериализатора в зависимости от действия."""
