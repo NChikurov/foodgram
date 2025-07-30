@@ -1,15 +1,13 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
-
 from rest_framework import viewsets, status
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
-from django.contrib.auth import authenticate
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 
 from .serializers import (
     UserSerializer,
@@ -34,6 +32,7 @@ from recipes.models import (
     ShoppingCart,
     Subscription
 )
+
 
 User = get_user_model()
 
