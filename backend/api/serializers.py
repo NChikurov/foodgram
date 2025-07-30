@@ -1,4 +1,5 @@
 import base64
+import binascii
 
 import uuid
 
@@ -40,7 +41,7 @@ class Base64ImageField(serializers.ImageField):
 
                 try:
                     decoded_file = base64.b64decode(data)
-                except:
+                except (ValueError, TypeError, binascii.Error):
                     raise serializers.ValidationError('Неверный формат base64')
 
                 file_extension = 'jpg'
@@ -326,6 +327,42 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
             'cooking_time'
         )
 
+    def validate(self, data):
+        """
+        Валидация всех данных.
+        """
+        data = self.validate_empty(data)
+        return data
+
+    def validate_empty(self, data):
+        """
+        Проверка обязательных полей.
+        """
+        request = self.context.get('request')
+
+        if request and request.method in ['PUT', 'PATCH']:
+            if 'ingredients' not in data:
+                raise serializers.ValidationError({
+                    'ingredients': 'Это поле обязательно.'
+                })
+
+            if 'tags' not in data:
+                raise serializers.ValidationError({
+                    'tags': 'Это поле обязательно.'
+                })
+
+        if 'ingredients' in data and not data['ingredients']:
+            raise serializers.ValidationError({
+                'ingredients': 'Нужен хотя бы один ингредиент'
+            })
+
+        if 'tags' in data and not data['tags']:
+            raise serializers.ValidationError({
+                'tags': 'Нужен хотя бы один тег'
+            })
+
+        return data
+
     def validate_ingredients(self, value):
         """Валидация ингредиентов."""
         if not value:
@@ -397,34 +434,6 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
             )
             for ingredient_data in ingredients_data
         ])
-
-    def validate_empty(self, data):
-        """
-        Общая валидация данных.
-        Требуем обязательные поля как при создании, так и при обновлении.
-        """
-        request = self.context.get('request')
-        if request and request.method in ['PUT', 'PATCH']:
-            if 'ingredients' not in data:
-                raise serializers.ValidationError({
-                    'ingredients': 'Это поле обязательно.'
-                })
-            if 'tags' not in data:
-                raise serializers.ValidationError({
-                    'tags': 'Это поле обязательно.'
-                })
-
-        if 'ingredients' in data and not data['ingredients']:
-            raise serializers.ValidationError({
-                'ingredients': 'Нужен хотя бы один ингредиент'
-            })
-
-        if 'tags' in data and not data['tags']:
-            raise serializers.ValidationError({
-                'tags': 'Нужен хотя бы один тег'
-            })
-
-        return data
 
     def create(self, validated_data):
         """Создание рецепта."""

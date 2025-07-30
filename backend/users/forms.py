@@ -22,6 +22,7 @@ class CustomUserCreationForm(UserCreationForm):
         super().__init__(*args, **kwargs)
         self.fields['email'].required = True
 
+
 class CustomUserChangeForm(UserChangeForm):
     """
     Форма для изменения пользователей в админке.

@@ -215,7 +215,8 @@ class UserViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            serializer = UserSerializer(author, context={'request': request})
+            serializer = UserWithRecipesSerializer(
+                author, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         elif request.method == 'DELETE':
@@ -327,11 +328,19 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """
         Объяснение: эта функция решает, кто может что делать
-        - Читать рецепты (GET) могут все, даже без авторизации  
+        - Читать рецепты (GET) могут все, даже без авторизации
         - Создавать/изменять (POST, PUT, PATCH, DELETE) только авторизованные
         """
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'get_link']:
             permission_classes = [AllowAny]
+
+        elif self.action in [
+            'favorite',
+            'shopping_cart',
+            'download_shopping_cart'
+        ]:
+            permission_classes = [IsAuthenticated]
+
         else:
             permission_classes = [IsRecipeAuthorOrReadOnly]
 

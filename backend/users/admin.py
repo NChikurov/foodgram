@@ -35,8 +35,7 @@ class UserAdmin(BaseUserAdmin):
                        'first_name',
                        'last_name',
                        'email',
-                       'password'                  
+                       'password'
                     ),
         })
     )
-    
