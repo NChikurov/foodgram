@@ -9,7 +9,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-!jqr&&d+u4hoqddk2vu%@
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['123.123.123.123']
+ALLOWED_HOSTS = ['123.123.123.123', '127.0.0.1', 'localhost']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
