@@ -17,7 +17,8 @@ from .serializers import (
     TagSerializer,
     IngredientSerializer,
     RecipeSerializer,
-    RecipeCreateUpdateSerializer
+    RecipeCreateUpdateSerializer,
+    Base64ImageField
 )
 from .permissions import (
     IsOwnerOrReadOnly,
@@ -116,7 +117,9 @@ class UserViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            user.avatar = request.data['avatar']
+            avatar_field = Base64ImageField()
+            user.avatar = avatar_field.to_internal_value(
+                request.data['avatar'])
             user.save()
 
             return Response({

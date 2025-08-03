@@ -183,6 +183,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         validators=[validate_name_format]
     )
     email = serializers.EmailField(required=False)
+    avatar = Base64ImageField(required=False, allow_null=True)
 
     class Meta:
         model = User
