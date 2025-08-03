@@ -9,7 +9,13 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-!jqr&&d+u4hoqddk2vu%@
 
 DEBUG = False
 
-ALLOWED_HOSTS = ['123.123.123.123', '127.0.0.1', 'localhost', 'foodgramrecipes.ddns.net']
+ALLOWED_HOSTS = [
+    '123.123.123.123',
+    '127.0.0.1',
+    'localhost',
+    'foodgramrecipes.ddns.net',
+    '62.84.122.100'
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -117,3 +123,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+CSRF_TRUSTED_ORIGINS = ['https://foodgramrecipes.ddns.net']
