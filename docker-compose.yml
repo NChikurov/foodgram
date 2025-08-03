@@ -30,9 +30,12 @@ services:
 
   gateway:
     build: ./gateway/
+    env_file: .env
     volumes:
       - static:/staticfiles/
+      - media:/media/
     ports:
       - "8000:80"
     depends_on:
       - backend
+      - frontend
