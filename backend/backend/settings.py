@@ -9,7 +9,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-!jqr&&d+u4hoqddk2vu%@
 
 DEBUG = False
 
-ALLOWED_HOSTS = ['123.123.123.123', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['123.123.123.123', '127.0.0.1', 'localhost', 'foodgramrecipes.ddns.net']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
