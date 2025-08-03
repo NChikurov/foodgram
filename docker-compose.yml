@@ -2,7 +2,8 @@ version: '3'
 
 volumes:
   pg_data:
-  static:
+  frontend_static:
+  backend_static:
   media:
 
 services:
@@ -15,15 +16,14 @@ services:
   frontend:
     env_file: .env
     build: ./frontend
-    command: cp -r /app/build/. /frontend_static/
     volumes:
-      - static:/frontend_static
+      - frontend_static:/frontend_static
 
   backend:
     build: ./backend/
     env_file: .env
     volumes:
-      - static:/backend_static
+      - backend_static:/backend_static
       - media:/app/media
     depends_on:
       - db
@@ -32,7 +32,8 @@ services:
     build: ./gateway/
     env_file: .env
     volumes:
-      - static:/staticfiles/
+      - frontend_static:/frontend_static
+      - backend_static:/backend_static
       - media:/media/
     ports:
       - "8000:80"
