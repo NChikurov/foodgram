@@ -29,7 +29,7 @@ services:
       - db
 
   gateway:
-    build: ./gateway/
+    image: hourvari/foodgram_gateway:latest
     env_file: .env
     volumes:
       - frontend_static:/frontend_static
