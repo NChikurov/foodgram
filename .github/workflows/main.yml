@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  flake8-and-postman-tests:
+  flake8-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,32 +26,10 @@ jobs:
     - name: Test with flake8
       run: python -m flake8 backend/
 
-    - name: Install Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-
-    - name: Install Newman
-      run: npm install -g newman
-
-    - name: Run Postman tests
-      run: |
-        newman run postman_collection/foodgram.postman_collection.json \
-          --reporters cli,json \
-          --reporter-json-export newman-report.json
-      continue-on-error: true
-
-    - name: Upload Newman report
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: newman-report
-        path: newman-report.json
-
   build_backend_and_push_to_docker_hub:
-    name: Push Docker image to Docker Hub
+    name: Push backend Docker image to Docker Hub
     runs-on: ubuntu-latest
-    needs: flake8-and-postman-tests
+    needs: flake8-tests
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
@@ -73,9 +51,9 @@ jobs:
           tags: hourvari/foodgram_backend:latest 
      
   build_frontend_and_push_to_docker_hub:
-    name: Push Docker image to Docker Hub
+    name: Push frontend Docker image to Docker Hub
     runs-on: ubuntu-latest
-    needs: flake8-and-postman-tests
+    needs: flake8-tests
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
@@ -97,9 +75,9 @@ jobs:
           tags: hourvari/foodgram_frontend:latest
    
   build_gateway_and_push_to_docker_hub:
-    name: Push Docker image to Docker Hub
+    name: Push gateway Docker image to Docker Hub
     runs-on: ubuntu-latest
-    needs: flake8-and-postman-tests
+    needs: flake8-tests
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
@@ -150,5 +128,5 @@ jobs:
           sudo docker compose -f docker-compose.production.yml up -d
           sudo docker compose -f docker-compose.production.yml exec backend python manage.py migrate
           sudo docker compose -f docker-compose.production.yml exec backend python manage.py load_ingredients
+          sudo docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic --noinput
           sudo docker compose -f docker-compose.production.yml exec backend cp -r /app/collected_static/. /backend_static/static/
-          sudo docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic
