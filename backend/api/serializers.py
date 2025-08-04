@@ -6,12 +6,23 @@ from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from rest_framework import serializers
 
-from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
-                            ShoppingCart, Subscription, Tag)
-
-from .validators import (validate_name_format, validate_password_strength,
-                         validate_unique_email, validate_unique_email_update,
-                         validate_unique_username, validate_username_format)
+from recipes.models import (
+    Favorite,
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+    ShoppingCart,
+    Subscription,
+    Tag
+)
+from .validators import (
+    validate_name_format,
+    validate_password_strength,
+    validate_unique_email,
+    validate_unique_email_update,
+    validate_unique_username,
+    validate_username_format
+)
 
 User = get_user_model()
 

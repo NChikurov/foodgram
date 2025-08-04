@@ -9,15 +9,30 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from recipes.models import (Favorite, Ingredient, Recipe, ShoppingCart,
-                            Subscription, Tag)
-
-from .permissions import (IsAuthenticatedOrCreateReadOnly, IsOwnerOrReadOnly,
-                          IsRecipeAuthorOrReadOnly)
-from .serializers import (Base64ImageField, IngredientSerializer,
-                          RecipeCreateUpdateSerializer, RecipeSerializer,
-                          TagSerializer, UserCreateSerializer, UserSerializer,
-                          UserUpdateSerializer, UserWithRecipesSerializer)
+from recipes.models import (
+    Favorite,
+    Ingredient,
+    Recipe,
+    ShoppingCart,
+    Subscription,
+    Tag
+)
+from .permissions import (
+    IsAuthenticatedOrCreateReadOnly,
+    IsOwnerOrReadOnly,
+    IsRecipeAuthorOrReadOnly
+)
+from .serializers import (
+    Base64ImageField,
+    IngredientSerializer,
+    RecipeCreateUpdateSerializer,
+    RecipeSerializer,
+    TagSerializer,
+    UserCreateSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+    UserWithRecipesSerializer
+)
 
 User = get_user_model()
 
