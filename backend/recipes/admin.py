@@ -1,13 +1,14 @@
 from django.contrib import admin
 
 from .models import (
-    Tag,
+    Favorite,
     Ingredient,
     Recipe,
-    Favorite,
     ShoppingCart,
-    Subscription
+    Subscription,
+    Tag
 )
+
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):

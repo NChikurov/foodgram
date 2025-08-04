@@ -7,20 +7,20 @@ from django.core.files.base import ContentFile
 from rest_framework import serializers
 
 from recipes.models import (
-    Tag,
+    Favorite,
     Ingredient,
     Recipe,
     RecipeIngredient,
+    ShoppingCart,
     Subscription,
-    Favorite,
-    ShoppingCart
+    Tag
 )
 from .validators import (
+    validate_name_format,
+    validate_password_strength,
     validate_unique_email,
     validate_unique_email_update,
     validate_unique_username,
-    validate_password_strength,
-    validate_name_format,
     validate_username_format
 )
 

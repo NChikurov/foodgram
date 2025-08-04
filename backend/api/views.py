@@ -1,37 +1,37 @@
-from django.contrib.auth import get_user_model, authenticate
+from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
-from rest_framework import viewsets, status
-from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .serializers import (
-    UserSerializer,
-    UserWithRecipesSerializer,
-    UserCreateSerializer,
-    UserUpdateSerializer,
-    TagSerializer,
-    IngredientSerializer,
-    RecipeSerializer,
-    RecipeCreateUpdateSerializer,
-    Base64ImageField
-)
-from .permissions import (
-    IsOwnerOrReadOnly,
-    IsAuthenticatedOrCreateReadOnly,
-    IsRecipeAuthorOrReadOnly
-)
 from recipes.models import (
-    Tag,
+    Favorite,
     Ingredient,
     Recipe,
-    Favorite,
     ShoppingCart,
-    Subscription
+    Subscription,
+    Tag
+)
+from .permissions import (
+    IsAuthenticatedOrCreateReadOnly,
+    IsOwnerOrReadOnly,
+    IsRecipeAuthorOrReadOnly
+)
+from .serializers import (
+    Base64ImageField,
+    IngredientSerializer,
+    RecipeCreateUpdateSerializer,
+    RecipeSerializer,
+    TagSerializer,
+    UserCreateSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+    UserWithRecipesSerializer
 )
 
 User = get_user_model()
