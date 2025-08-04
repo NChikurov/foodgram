@@ -9,7 +9,6 @@ from .models import (
     Subscription
 )
 
-
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     """Администрирование справочника тегов."""

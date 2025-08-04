@@ -1,5 +1,7 @@
 import json
+
 from django.core.management.base import BaseCommand
+
 from recipes.models import Ingredient
 
 
@@ -24,13 +26,14 @@ class Command(BaseCommand):
             ingredients_to_create = []
 
             for ingredient_data in ingredients_data:
-                if not Ingredient.objects.filter(
-                    name=ingredient_data['name']
-                ).exists():
+                name = ingredient_data['name']
+                if not Ingredient.objects.filter(name=name).exists():
                     ingredients_to_create.append(
                         Ingredient(
-                            name=ingredient_data['name'],
-                            measurement_unit=ingredient_data['measurement_unit']
+                            name=name,
+                            measurement_unit=ingredient_data[
+                                'measurement_unit'
+                            ]
                         )
                     )
 
@@ -38,7 +41,8 @@ class Command(BaseCommand):
                 Ingredient.objects.bulk_create(ingredients_to_create)
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f'Успешно загружено {len(ingredients_to_create)} ингредиентов'
+                        f'Успешно загружено {len(ingredients_to_create)} '
+                        f'ингредиентов'
                     )
                 )
             else:

@@ -34,7 +34,6 @@ from recipes.models import (
     Subscription
 )
 
-
 User = get_user_model()
 
 

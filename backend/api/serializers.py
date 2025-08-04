@@ -1,6 +1,5 @@
 import base64
 import binascii
-
 import uuid
 
 from django.contrib.auth import get_user_model
@@ -12,7 +11,9 @@ from recipes.models import (
     Ingredient,
     Recipe,
     RecipeIngredient,
-    Subscription
+    Subscription,
+    Favorite,
+    ShoppingCart
 )
 from .validators import (
     validate_unique_email,
@@ -285,8 +286,6 @@ class RecipeSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
 
-        from recipes.models import Favorite
-
         return Favorite.objects.filter(
             user=request.user,
             recipe=obj
@@ -298,8 +297,6 @@ class RecipeSerializer(serializers.ModelSerializer):
 
         if not request or not request.user.is_authenticated:
             return False
-
-        from recipes.models import ShoppingCart
 
         return ShoppingCart.objects.filter(
             user=request.user,

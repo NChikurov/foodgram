@@ -10,7 +10,6 @@ from .views import (
     RecipeViewSet
 )
 
-
 router = DefaultRouter()
 
 router.register('users', UserViewSet, basename='user')
