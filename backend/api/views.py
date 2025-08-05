@@ -1,6 +1,5 @@
 from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
+from django.db.models import F, Sum
 from django.http import HttpResponse
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
@@ -12,10 +11,12 @@ from rest_framework.response import Response
 from recipes.models import (Favorite, Ingredient, Recipe, ShoppingCart,
                             Subscription, Tag)
 
+from .constants import FAVORITE_TRUE, SHOPPING_CART_TRUE
 from .permissions import (IsAuthenticatedOrCreateReadOnly, IsOwnerOrReadOnly,
                           IsRecipeAuthorOrReadOnly)
-from .serializers import (Base64ImageField, IngredientSerializer,
-                          RecipeCreateUpdateSerializer, RecipeSerializer,
+from .serializers import (Base64ImageField, ChangePasswordSerializer,
+                          IngredientSerializer, RecipeCreateUpdateSerializer,
+                          RecipeSerializer, SubscriptionSerializer,
                           TagSerializer, UserCreateSerializer, UserSerializer,
                           UserUpdateSerializer, UserWithRecipesSerializer)
 
@@ -133,39 +134,12 @@ class UserViewSet(viewsets.ModelViewSet):
         Смена пароля для текущего пользователя:
         - POST /api/users/set_password/
         """
-        user = request.user
-        current_password = request.data.get('current_password')
-        new_password = request.data.get('new_password')
-
-        if not current_password:
-            return Response(
-                {'current_password': ['Обязательное поле']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if not new_password:
-            return Response(
-                {'new_password': ['Обязательное поле']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if not user.check_password(current_password):
-            return Response(
-                {'current_password': ['Неверный пароль']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            validate_password(new_password, user)
-        except ValidationError as e:
-            return Response(
-                {'new_password': e.messages},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        user.set_password(new_password)
-        user.save()
-
+        serializer = ChangePasswordSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
@@ -183,32 +157,23 @@ class UserViewSet(viewsets.ModelViewSet):
         author = self.get_object()
         user = request.user
 
-        if user == author:
-            return Response(
-                {'error': 'Нельзя подписать на себя'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         if request.method == 'POST':
-            subscription, created = Subscription.objects.get_or_create(
-                user=user,
-                author=author
+            serializer = SubscriptionSerializer(
+                data={},
+                context={'request': request, 'author': author}
             )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
 
-            if not created:
-                return Response(
-                    {'error': 'Уже подписан.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            serializer = UserWithRecipesSerializer(
+            response_serializer = UserWithRecipesSerializer(
                 author, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(
+                response_serializer.data, status=status.HTTP_201_CREATED
+            )
 
         elif request.method == 'DELETE':
             try:
-                subscription = Subscription.objects.get(
-                    user=user, author=author)
+                subscription = user.follower.get(author=author)
                 subscription.delete()
                 return Response(status=status.HTTP_204_NO_CONTENT)
             except Subscription.DoesNotExist:
@@ -228,8 +193,9 @@ class UserViewSet(viewsets.ModelViewSet):
         Список подписок пользователя:
         - GET /api/users/subscriptions.
         """
-        subscriptions = Subscription.objects.filter(user=request.user)
-        authors = User.objects.filter(id__in=subscriptions.values('author'))
+        authors = User.objects.filter(
+            following__user=request.user
+        ).prefetch_related('recipes')
 
         page = self.paginate_queryset(authors)
         if page is not None:
@@ -352,7 +318,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
         is_favorited = self.request.query_params.get('is_favorited')
         if is_favorited and self.request.user.is_authenticated:
-            if is_favorited == '1':
+            if is_favorited == FAVORITE_TRUE:
                 queryset = queryset.filter(
                     favorite__user=self.request.user
                 )
@@ -360,7 +326,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         is_in_shopping_cart = self.request.query_params.get(
             'is_in_shopping_cart')
         if is_in_shopping_cart and self.request.user.is_authenticated:
-            if is_in_shopping_cart == '1':
+            if is_in_shopping_cart == SHOPPING_CART_TRUE:
                 queryset = queryset.filter(
                     shoppingcart__user=self.request.user
                 )
@@ -470,25 +436,28 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def download_shopping_cart(self, request):
         """Скачивание списка покупок в виде текстового файла."""
-        shopping_cart_recipes = Recipe.objects.filter(
-            shoppingcart__user=request.user
-        ).prefetch_related('recipeingredient_set__ingredient')
-
-        ingredients_dict = {}
-
-        for recipe in shopping_cart_recipes:
-            for recipe_ingredient in recipe.recipeingredient_set.all():
-                ingredient = recipe_ingredient.ingredient
-                key = f"{ingredient.name} ({ingredient.measurement_unit})"
-
-                if key in ingredients_dict:
-                    ingredients_dict[key] += recipe_ingredient.amount
-                else:
-                    ingredients_dict[key] = recipe_ingredient.amount
+        ingredients_data = Recipe.objects.filter(
+            in_shopping_cart__user=request.user
+        ).values(
+            ingredient_name=F('recipe_ingredients__ingredient__name'),
+            measurement_unit=(
+                F('recipe_ingredients__ingredient__measurement_unit')
+            )
+        ).annotate(
+            total_amount=Sum('recipe_ingredients__amount')
+        ).order_by('ingredient_name')
 
         content = "Список покупок:\n\n"
-        for ingredient, amount in ingredients_dict.items():
-            content += f"• {ingredient}: {amount}\n"
+        for item in ingredients_data:
+            ingredient_name = item['ingredient_name']
+            measurement_unit = item['measurement_unit']
+            total_amount = item['total_amount']
+
+            if ingredient_name and measurement_unit and total_amount:
+                content += (
+                    f"• {ingredient_name} ({measurement_unit}): "
+                    f"{total_amount}\n"
+                )
 
         response = HttpResponse(
             content, content_type='text/plain; charset=utf-8')

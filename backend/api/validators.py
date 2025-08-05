@@ -3,6 +3,9 @@ import re
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from .constants import (MIN_NAME_LENGTH, MIN_PASSWORD_LENGTH,
+                        MAX_USERNAME_LENGTH)
+
 User = get_user_model()
 
 
@@ -37,14 +40,16 @@ def validate_unique_username(value):
 
 def validate_username_format(value):
     """Проверяет формат username согласно Django стандартам."""
-    if len(value) > 150:
+    if len(value) > MAX_USERNAME_LENGTH:
         raise serializers.ValidationError(
-            'Username не может быть длиннее 150 символов.'
+            f'Username не может быть длиннее '
+            f'{MAX_USERNAME_LENGTH} символов.'
         )
 
     if not re.match(r'^[\w.@+-]+$', value):
         raise serializers.ValidationError(
-            'Username может содержать только буквы, цифры и символы @/./+/-/_'
+            'Username может содержать только буквы, цифры и '
+            'символы @/./+/-/_'
         )
 
     return value
@@ -66,9 +71,10 @@ def validate_password_strength(value):
             'Пароль не может состоять только из цифр.'
         )
 
-    if len(value) < 8:
+    if len(value) < MIN_PASSWORD_LENGTH:
         raise serializers.ValidationError(
-            'Пароль должен состоять минимум из 8 символов'
+            f'Пароль должен состоять минимум из '
+            f'{MIN_PASSWORD_LENGTH} символов'
         )
 
     if value.lower() == value:
@@ -86,9 +92,10 @@ def validate_name_format(value):
             'Поле не может быть пустым.'
         )
 
-    if len(value) < 2:
+    if len(value) < MIN_NAME_LENGTH:
         raise serializers.ValidationError(
-            'Имя (фамилия) должно содержать минимум 2 символа.'
+            f'Имя (фамилия) должно содержать минимум '
+            f'{MIN_NAME_LENGTH} символа.'
         )
 
     if not value.replace(' ', '').replace('-', '').isalpha():
