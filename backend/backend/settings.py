@@ -1,19 +1,19 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-!jqr&&d+u4hoqddk2vu%@9m2v55r!84cgn%vyxl2^9a5wsi54&')
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-!jqr&&d+u4hoqddk2vu%@9m2v55r!84cgn%vyxl2^9a5wsi54&'
+)
 
-DEBUG = False
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = [
-    '123.123.123.123',
-    '127.0.0.1',
-    'localhost',
-    'foodgramrecipes.ddns.net',
-    '62.84.122.100'
-]
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',

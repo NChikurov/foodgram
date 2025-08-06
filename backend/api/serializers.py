@@ -5,10 +5,10 @@ import uuid
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from rest_framework import serializers
+from django.contrib.auth import authenticate
 
 from recipes.models import (Ingredient, Recipe, RecipeIngredient,
-                            Subscription, Tag)
-
+                            Subscription, Tag, Favorite, ShoppingCart)
 from .constants import (DEFAULT_RECIPES_LIMIT, MAX_INGREDIENT_AMOUNT,
                         MIN_INGREDIENT_AMOUNT, MIN_COOKING_TIME,
                         MIN_INGREDIENTS_COUNT, MIN_TAGS_COUNT)
@@ -197,6 +197,183 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         instance.avatar = validated_data.get('avatar', instance.avatar)
         instance.save()
         return instance
+
+
+class AvatarSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для работы с аватаром пользователя.
+    Используется для PUT/DELETE запросов к /api/users/me/avatar/
+    """
+    avatar = Base64ImageField(required=True)
+
+    class Meta:
+        model = User
+        fields = ('avatar',)
+
+    def validate_avatar(self, value):
+        """Валидация аватара."""
+        if not value:
+            raise serializers.ValidationError('Это поле обязательно.')
+        return value
+
+    def update(self, instance, validated_data):
+        """Обновление аватара пользователя."""
+        instance.avatar = validated_data['avatar']
+        instance.save()
+        return instance
+
+    def to_representation(self, instance):
+        """Возвращает URL аватара."""
+        return {
+            'avatar': instance.avatar.url if instance.avatar else None
+        }
+
+
+class AuthTokenSerializer(serializers.Serializer):
+    """
+    Сериализатор для аутентификации пользователя.
+    Используется для POST запросов к /api/auth/token/login/
+    """
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
+
+    def validate(self, data):
+        """Валидация учетных данных пользователя."""
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email:
+            raise serializers.ValidationError({
+                'email': 'Обязательное поле'
+            })
+
+        if not password:
+            raise serializers.ValidationError({
+                'password': 'Обязательное поле'
+            })
+
+        try:
+            user = User.objects.get(email=email)
+            user = authenticate(username=user.username, password=password)
+            if not user:
+                raise serializers.ValidationError({
+                    'non_field_errors': [
+                        'Unable to log in with provided credentials.'
+                    ]
+                })
+        except User.DoesNotExist:
+            raise serializers.ValidationError({
+                'non_field_errors': [
+                    'Unable to log in with provided credentials.'
+                ]
+            })
+
+        data['user'] = user
+        return data
+
+
+class FavoriteSerializer(serializers.Serializer):
+    """
+    Сериализатор для работы с избранными рецептами.
+    Используется для POST/DELETE запросов к /api/recipes/{id}/favorite/
+    """
+    def validate(self, data):
+        """Валидация избранного рецепта."""
+        request = self.context['request']
+        recipe = self.context['recipe']
+        user = request.user
+
+        if request.method == 'POST':
+            if Favorite.objects.filter(user=user, recipe=recipe).exists():
+                raise serializers.ValidationError('Рецепт уже в избранном')
+
+        elif request.method == 'DELETE':
+            if not Favorite.objects.filter(user=user, recipe=recipe).exists():
+                raise serializers.ValidationError('Рецепт не в избранном')
+
+        return data
+
+    def save(self):
+        """Создание или удаление избранного рецепта."""
+        request = self.context['request']
+        recipe = self.context['recipe']
+        user = request.user
+
+        if request.method == 'POST':
+            favorite = Favorite.objects.create(user=user, recipe=recipe)
+            return favorite
+        elif request.method == 'DELETE':
+            favorite = Favorite.objects.get(user=user, recipe=recipe)
+            favorite.delete()
+            return None
+
+    def to_representation(self, instance):
+        """Возвращает данные рецепта для ответа."""
+        if instance is None:
+            return {}
+
+        recipe = instance.recipe if hasattr(instance, 'recipe') else instance
+        return {
+            'id': recipe.id,
+            'name': recipe.name,
+            'image': recipe.image.url if recipe.image else None,
+            'cooking_time': recipe.cooking_time
+        }
+
+
+class ShoppingCartSerializer(serializers.Serializer):
+    """
+    Сериализатор для работы с корзиной покупок.
+    Используется для POST/DELETE запросов к /api/recipes/{id}/shopping_cart/
+    """
+    def validate(self, data):
+        """Валидация корзины покупок."""
+        request = self.context['request']
+        recipe = self.context['recipe']
+        user = request.user
+
+        if request.method == 'POST':
+            if (ShoppingCart.objects.filter(
+                user=user, recipe=recipe
+            ).exists()):
+                raise serializers.ValidationError('Рецепт уже в корзине')
+
+        elif request.method == 'DELETE':
+            if not (ShoppingCart.objects.filter(
+                user=user, recipe=recipe
+            ).exists()):
+                raise serializers.ValidationError('Рецепт не в корзине')
+
+        return data
+
+    def save(self):
+        """Создание или удаление из корзины покупок."""
+        request = self.context['request']
+        recipe = self.context['recipe']
+        user = request.user
+
+        if request.method == 'POST':
+            shopping_cart = ShoppingCart.objects.create(
+                user=user, recipe=recipe
+            )
+            return shopping_cart
+        elif request.method == 'DELETE':
+            shopping_cart = ShoppingCart.objects.get(user=user, recipe=recipe)
+            shopping_cart.delete()
+            return None
+
+    def to_representation(self, instance):
+        """Возвращает данные рецепта для ответа."""
+        if instance is None:
+            return {}
+
+        recipe = instance.recipe if hasattr(instance, 'recipe') else instance
+        return {
+            'id': recipe.id,
+            'name': recipe.name,
+            'image': recipe.image.url if recipe.image else None,
+            'cooking_time': recipe.cooking_time
+        }
 
 
 class ChangePasswordSerializer(serializers.Serializer):

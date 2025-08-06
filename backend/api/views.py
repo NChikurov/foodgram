@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import get_user_model
 from django.db.models import F, Sum
 from django.http import HttpResponse
 from rest_framework import status, viewsets
@@ -8,16 +8,16 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from recipes.models import (Favorite, Ingredient, Recipe, ShoppingCart,
-                            Subscription, Tag)
-
+from recipes.models import (Ingredient, Recipe, Subscription, Tag)
 from .constants import FAVORITE_TRUE, SHOPPING_CART_TRUE
 from .permissions import (IsAuthenticatedOrCreateReadOnly, IsOwnerOrReadOnly,
                           IsRecipeAuthorOrReadOnly)
-from .serializers import (Base64ImageField, ChangePasswordSerializer,
+from .serializers import (AuthTokenSerializer, AvatarSerializer,
+                          ChangePasswordSerializer, FavoriteSerializer,
                           IngredientSerializer, RecipeCreateUpdateSerializer,
-                          RecipeSerializer, SubscriptionSerializer,
-                          TagSerializer, UserCreateSerializer, UserSerializer,
+                          RecipeSerializer, ShoppingCartSerializer,
+                          SubscriptionSerializer, TagSerializer,
+                          UserCreateSerializer, UserSerializer,
                           UserUpdateSerializer, UserWithRecipesSerializer)
 
 User = get_user_model()
@@ -96,20 +96,14 @@ class UserViewSet(viewsets.ModelViewSet):
         user = request.user
 
         if request.method == 'PUT':
-            if 'avatar' not in request.data:
-                return Response(
-                    {'avatar': ['Это поле обязательно.']},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            avatar_field = Base64ImageField()
-            user.avatar = avatar_field.to_internal_value(
-                request.data['avatar'])
-            user.save()
-
-            return Response({
-                'avatar': user.avatar.url if user.avatar else None
-            })
+            serializer = AvatarSerializer(
+                user,
+                data=request.data,
+                context={'request': request}
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
 
         if request.method == 'DELETE':
             if user.avatar:
@@ -214,27 +208,13 @@ class CustomAuthToken(ObtainAuthToken):
     Идентификация и аутентификация пользователя.
     """
     def post(self, request, *args, **kwargs):
-        email = request.data.get('email')
-        password = request.data.get('password')
+        serializer = AuthTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if email and password:
-            try:
-                user = User.objects.get(email=email)
-                user = authenticate(username=user.username, password=password)
-                if user:
-                    token, created = Token.objects.get_or_create(user=user)
-                    return Response({'auth_token': token.key})
-            except User.DoesNotExist:
-                pass
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
 
-        return Response(
-            {
-                'non_field_errors': [
-                    'Unable to log in with provided credentials.'
-                ]
-            },
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({'auth_token': token.key})
 
 
 @api_view(['POST'])
@@ -350,37 +330,18 @@ class RecipeViewSet(viewsets.ModelViewSet):
         - DELETE /api/recipes/{id}/favorite/ - удалить.
         """
         recipe = self.get_object()
-        user = request.user
+
+        serializer = FavoriteSerializer(
+            data={},
+            context={'request': request, 'recipe': recipe}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
         if request.method == 'POST':
-            favorite, created = Favorite.objects.get_or_create(
-                user=user,
-                recipe=recipe
-            )
-
-            if not created:
-                return Response(
-                    {'error': 'Рецепт уже в избранном'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            return Response({
-                'id': recipe.id,
-                'name': recipe.name,
-                'image': recipe.image.url if recipe.image else None,
-                'cooking_time': recipe.cooking_time
-            }, status=status.HTTP_201_CREATED)
-
-        elif request.method == 'DELETE':
-            try:
-                favorite = Favorite.objects.get(user=user, recipe=recipe)
-                favorite.delete()
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            except Favorite.DoesNotExist:
-                return Response(
-                    {'error': 'Рецепт не в избранном'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=True,
@@ -395,38 +356,18 @@ class RecipeViewSet(viewsets.ModelViewSet):
         - DELETE /api/recipes/{id}/shopping_cart/ - удалить.
         """
         recipe = self.get_object()
-        user = request.user
+
+        serializer = ShoppingCartSerializer(
+            data={},
+            context={'request': request, 'recipe': recipe}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
         if request.method == 'POST':
-            shopping_cart, created = ShoppingCart.objects.get_or_create(
-                user=user,
-                recipe=recipe
-            )
-
-            if not created:
-                return Response(
-                    {'error': 'Рецепт уже в корзине'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            return Response({
-                'id': recipe.id,
-                'name': recipe.name,
-                'image': recipe.image.url if recipe.image else None,
-                'cooking_time': recipe.cooking_time
-            }, status=status.HTTP_201_CREATED)
-
-        elif request.method == 'DELETE':
-            try:
-                shopping_cart = ShoppingCart.objects.get(
-                    user=user, recipe=recipe)
-                shopping_cart.delete()
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            except ShoppingCart.DoesNotExist:
-                return Response(
-                    {'error': 'Рецепт не в корзине'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=False,
