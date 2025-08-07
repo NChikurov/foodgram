@@ -11,7 +11,8 @@ from recipes.models import (Ingredient, Recipe, RecipeIngredient,
                             Subscription, Tag, Favorite, ShoppingCart)
 from .constants import (DEFAULT_RECIPES_LIMIT, MAX_INGREDIENT_AMOUNT,
                         MIN_INGREDIENT_AMOUNT, MIN_COOKING_TIME,
-                        MIN_INGREDIENTS_COUNT, MIN_TAGS_COUNT)
+                        MAX_COOKING_TIME, MIN_INGREDIENTS_COUNT,
+                        MIN_TAGS_COUNT)
 from .validators import (validate_name_format, validate_password_strength,
                          validate_unique_email, validate_unique_email_update,
                          validate_unique_username, validate_username_format)
@@ -544,7 +545,9 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         many=True
     )
     image = Base64ImageField()
-    cooking_time = serializers.IntegerField(min_value=MIN_COOKING_TIME)
+    cooking_time = serializers.IntegerField(
+        min_value=MIN_COOKING_TIME, max_value=MAX_COOKING_TIME
+    )
 
     class Meta:
         model = Recipe

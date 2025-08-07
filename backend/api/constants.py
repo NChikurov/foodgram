@@ -4,11 +4,11 @@
 
 # Валидация количества ингредиентов
 MIN_INGREDIENT_AMOUNT = 1
-MAX_INGREDIENT_AMOUNT = 32_000
+MAX_INGREDIENT_AMOUNT = 32000
 
 # Валидация времени приготовления (в минутах)
 MIN_COOKING_TIME = 1
-MAX_COOKING_TIME = 1440  # 24 часа в минутах
+MAX_COOKING_TIME = 32000
 
 # Валидация длины текстовых полей
 MIN_NAME_LENGTH = 2
